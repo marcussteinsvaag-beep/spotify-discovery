@@ -134,11 +134,26 @@
     position: relative;
   }
 
+  .playlist-search {
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    color: var(--offwhite);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 0.6rem 0.9rem;
+    width: 100%;
+    outline: none;
+  }
+  .playlist-search:focus { border-color: var(--accent); }
+
   .playlist-list {
     background: #141414;
     border: 1px solid #2a2a2a;
-    border-radius: 4px;
-    max-height: 180px;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 220px;
     overflow-y: auto;
   }
 
@@ -379,6 +394,7 @@
   <div class="sidebar">
     <div class="config-block">
       <div class="section-label">Velg spilleliste</div>
+      <input type="text" class="playlist-search" id="playlistSearch" placeholder="Søk…" oninput="filterPlaylists(this.value)" />
       <div class="playlist-list" id="playlistList">
         <div class="playlist-item" style="color:var(--muted)">Laster spillelister…</div>
       </div>
@@ -519,12 +535,30 @@ async function loadUser() {
   return user.id;
 }
 
+let allPlaylists = [];
+
 async function loadPlaylists(userId) {
-  const data = await spotifyFetch('/me/playlists?limit=50');
+  let items = [];
+  let url = '/me/playlists?limit=50';
+  while (url) {
+    const data = await spotifyFetch(url);
+    items = items.concat(data.items);
+    url = data.next ? data.next.replace('https://api.spotify.com/v1', '') : null;
+  }
+  allPlaylists = items;
+  renderPlaylists(items);
+}
+
+function renderPlaylists(items) {
   const list = document.getElementById('playlistList');
   list.innerHTML = '';
 
-  data.items.forEach(pl => {
+  if (items.length === 0) {
+    list.innerHTML = '<div class="playlist-item" style="color:var(--muted)">Ingen treff</div>';
+    return;
+  }
+
+  items.forEach(pl => {
     const div = document.createElement('div');
     div.className = 'playlist-item';
     div.dataset.id = pl.id;
@@ -541,9 +575,19 @@ async function loadPlaylists(userId) {
 
     div.appendChild(img);
     div.appendChild(name);
-    div.onclick = () => selectPlaylist(pl, div);
+    div.onclick = () => {
+      document.getElementById('playlistSearch').value = pl.name;
+      selectPlaylist(pl, div);
+    };
     list.appendChild(div);
   });
+}
+
+function filterPlaylists(query) {
+  const filtered = allPlaylists.filter(pl =>
+    pl.name.toLowerCase().includes(query.toLowerCase())
+  );
+  renderPlaylists(filtered);
 }
 
 function selectPlaylist(pl, el) {
