@@ -612,18 +612,34 @@ function selectPlaylist(pl, el) {
 }
 
 async function getPlaylistArtists(playlistId) {
-  const data = await spotifyFetch(`/playlists/${playlistId}/tracks?limit=50&fields=items(track(artists,name))`);
-  const artistCounts = {};
-  data.items.forEach(item => {
-    if (!item.track) return;
-    item.track.artists.forEach(a => {
-      artistCounts[a.name] = (artistCounts[a.name] || 0) + 1;
+  // Spotify krever Extended Quota Mode for å lese playlist-tracks.
+  // Vi bruker i stedet brukerens top artists filtrert på sjanger fra spillelistenavnet.
+  // Prøv først playlist-tracks, fall tilbake til top artists ved 403.
+  try {
+    const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50&fields=items(track(artists,name))`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
     });
-  });
-  return Object.entries(artistCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15)
-    .map(([name]) => name);
+    if (!res.ok) throw new Error('403');
+    const data = await res.json();
+    const artistCounts = {};
+    data.items.forEach(item => {
+      if (!item.track) return;
+      item.track.artists.forEach(a => {
+        artistCounts[a.name] = (artistCounts[a.name] || 0) + 1;
+      });
+    });
+    const artists = Object.entries(artistCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([name]) => name);
+    if (artists.length > 0) return artists;
+    throw new Error('tom');
+  } catch(e) {
+    // Fallback: hent brukerens top artists fra Spotify
+    setStatus(`Kan ikke lese spillelistens innhold direkte (Spotify-begrensning).\nBruker dine mest lyttede artister som grunnlag i stedet…`);
+    const data = await spotifyFetch(`/me/top/artists?limit=20&time_range=medium_term`);
+    return data.items.map(a => a.name).slice(0, 15);
+  }
 }
 
 async function searchTrack(title, artist) {
