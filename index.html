@@ -667,7 +667,7 @@ async function createSpotifyPlaylist(userId, name, trackUris) {
 
 // ─── Claude API ───────────────────────────────────────────────────────────────
 async function askClaude(prompt) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://discovery-proxy-ten.vercel.app/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -689,7 +689,6 @@ async function runDiscovery() {
   if (!selectedPlaylist) return;
 
   const btn = document.getElementById('discoverBtn');
-  const statusBox = document.getElementById('statusBox');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Jobber…';
   document.getElementById('resultsSection').style.display = 'none';
@@ -705,7 +704,7 @@ async function runDiscovery() {
     setStatus(`Analyserer spillelisten «${selectedPlaylist.name}»…`);
     const artists = await getPlaylistArtists(selectedPlaylist.id);
 
-    setStatus(`Fant ${artists.length} artister. Spør Claude om ny musikk…\n\nArtister i spillelisten: ${artists.join(', ')}`);
+    setStatus(`Fant ${artists.length} artister. Søker etter ny musikk…\n\nArtister: ${artists.join(', ')}`);
 
     const extraLine = extra ? `\nTilleggsønsker: ${extra}` : '';
     const prompt = `Du er en musikkurator. Brukeren har en Spotify-spilleliste kalt "${selectedPlaylist.name}" med disse artistene (de mest spilte først): ${artists.join(', ')}.
@@ -722,8 +721,7 @@ Prioriter musikk som:
 4. IKKE allerede er en av artistene i listen ovenfor`;
 
     const response = await askClaude(prompt);
-
-    setStatus(`Claude svarte. Parser forslag…`);
+    setStatus(`Fikk svar. Parser forslag…`);
 
     let tracks = [];
     try {
@@ -731,7 +729,7 @@ Prioriter musikk som:
       const match = clean.match(/\[[\s\S]*\]/);
       if (match) tracks = JSON.parse(match[0]);
     } catch (e) {
-      throw new Error('Kunne ikke parse Claude-svar: ' + response.slice(0, 200));
+      throw new Error('Kunne ikke parse svar: ' + response.slice(0, 200));
     }
 
     setStatus(`Fant ${tracks.length} forslag. Søker i Spotify-katalogen…`);
@@ -781,7 +779,6 @@ Prioriter musikk som:
 
     document.getElementById('countBadge').textContent = `${found} funnet i Spotify`;
     setStatus(`Ferdig! ${found} av ${tracks.length} spor funnet i Spotify-katalogen.\n\nTrykk «Lagre i Spotify» for å opprette spillelisten.`);
-
     if (found > 0) document.getElementById('saveBtn').style.display = 'flex';
 
   } catch (err) {
