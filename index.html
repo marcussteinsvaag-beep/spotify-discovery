@@ -488,7 +488,7 @@ async function startLogin() {
 
   const verifier = await generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
-  sessionStorage.setItem('pkce_verifier', verifier);
+  localStorage.setItem('pkce_verifier', verifier);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -506,7 +506,7 @@ async function handleCallback() {
   const code = params.get('code');
   if (!code) return false;
 
-  const verifier = sessionStorage.getItem('pkce_verifier');
+  const verifier = localStorage.getItem('pkce_verifier');
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -806,18 +806,18 @@ const SCOPE_VERSION = 'v2'; // bump this to force re-login when scopes change
 
 async function init() {
   // Force re-login if scope version has changed
-  if (sessionStorage.getItem('scope_version') !== SCOPE_VERSION) {
-    sessionStorage.clear();
+  if (localStorage.getItem('scope_version') !== SCOPE_VERSION) {
+    localStorage.removeItem('spotify_token');
   }
 
-  accessToken = sessionStorage.getItem('spotify_token');
+  accessToken = localStorage.getItem('spotify_token');
 
   if (window.location.search.includes('code=')) {
     clientId = localStorage.getItem('spotify_client_id') || '';
     const ok = await handleCallback();
     if (ok) {
-      sessionStorage.setItem('spotify_token', accessToken);
-      sessionStorage.setItem('scope_version', SCOPE_VERSION);
+      localStorage.setItem('spotify_token', accessToken);
+      localStorage.setItem('scope_version', SCOPE_VERSION);
     }
   }
 
@@ -827,7 +827,7 @@ async function init() {
       currentUserId = await loadUser();
       await loadPlaylists(currentUserId);
     } catch (e) {
-      sessionStorage.clear();
+      localStorage.removeItem('spotify_token');
       document.getElementById('loginOverlay').style.display = 'flex';
     }
   }
