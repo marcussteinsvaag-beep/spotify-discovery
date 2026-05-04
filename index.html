@@ -83,6 +83,15 @@
     min-height: 0;
   }
 
+  @media (max-width: 700px) {
+    main { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid #222; padding: 1.2rem; gap: 1rem; }
+    .content { padding: 1.2rem; }
+    header { padding: 1.2rem; flex-wrap: wrap; gap: 0.5rem; }
+    header h1 { font-size: 1.4rem; }
+    .auth-bar { margin-left: 0; width: 100%; }
+  }
+
   .sidebar {
     border-right: 1px solid #222;
     padding: 2rem;
@@ -793,13 +802,23 @@ function setStatus(msg) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+const SCOPE_VERSION = 'v2'; // bump this to force re-login when scopes change
+
 async function init() {
+  // Force re-login if scope version has changed
+  if (sessionStorage.getItem('scope_version') !== SCOPE_VERSION) {
+    sessionStorage.clear();
+  }
+
   accessToken = sessionStorage.getItem('spotify_token');
 
   if (window.location.search.includes('code=')) {
     clientId = localStorage.getItem('spotify_client_id') || '';
     const ok = await handleCallback();
-    if (ok) sessionStorage.setItem('spotify_token', accessToken);
+    if (ok) {
+      sessionStorage.setItem('spotify_token', accessToken);
+      sessionStorage.setItem('scope_version', SCOPE_VERSION);
+    }
   }
 
   if (accessToken) {
@@ -808,7 +827,7 @@ async function init() {
       currentUserId = await loadUser();
       await loadPlaylists(currentUserId);
     } catch (e) {
-      sessionStorage.removeItem('spotify_token');
+      sessionStorage.clear();
       document.getElementById('loginOverlay').style.display = 'flex';
     }
   }
