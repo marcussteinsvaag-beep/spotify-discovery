@@ -612,14 +612,11 @@ function selectPlaylist(pl, el) {
 }
 
 async function getPlaylistArtists(playlistId) {
-  // Spotify krever Extended Quota Mode for å lese playlist-tracks.
-  // Vi bruker i stedet brukerens top artists filtrert på sjanger fra spillelistenavnet.
-  // Prøv først playlist-tracks, fall tilbake til top artists ved 403.
   try {
     const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50&fields=items(track(artists,name))`, {
       headers: { Authorization: 'Bearer ' + accessToken }
     });
-    if (!res.ok) throw new Error('403');
+    if (!res.ok) throw new Error('forbidden');
     const data = await res.json();
     const artistCounts = {};
     data.items.forEach(item => {
@@ -635,9 +632,12 @@ async function getPlaylistArtists(playlistId) {
     if (artists.length > 0) return artists;
     throw new Error('tom');
   } catch(e) {
-    // Fallback: hent brukerens top artists fra Spotify
-    setStatus(`Kan ikke lese spillelistens innhold direkte (Spotify-begrensning).\nBruker dine mest lyttede artister som grunnlag i stedet…`);
-    const data = await spotifyFetch(`/me/top/artists?limit=20&time_range=medium_term`);
+    setStatus(`Spotify begrenser direktelesing av spillelister.\nBruker dine topp-artister som grunnlag – bruk ekstra instruksjoner for å spesifisere sjanger.`);
+    await new Promise(r => setTimeout(r, 1500));
+    const res = await fetch('https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const data = await res.json();
     return data.items.map(a => a.name).slice(0, 15);
   }
 }
