@@ -526,7 +526,8 @@ async function handleCallback() {
   const data = await res.json();
   if (data.access_token) {
     accessToken = data.access_token;
-    sessionStorage.setItem('spotify_token', accessToken);
+    localStorage.setItem('spotify_token', accessToken);
+    localStorage.setItem('scope_version', SCOPE_VERSION);
     window.history.replaceState({}, '', window.location.pathname);
     return true;
   }
@@ -673,11 +674,16 @@ async function askClaude(prompt) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
       max_tokens: 1000,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       messages: [{ role: 'user', content: prompt }]
     })
   });
   const data = await res.json();
-  const text = data.content?.filter(b => b.type === 'text').map(b => b.text).join('\n') || '';
+  // Extract text from content blocks (web search may produce multiple blocks)
+  const text = (data.content || [])
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('\n');
   return text;
 }
 
@@ -708,40 +714,50 @@ async function runDiscovery() {
     const extraLine = extra ? `\nTilleggsønsker: ${extra}` : '';
     const prompt = `Du er en musikkurator. Brukeren har en Spotify-spilleliste kalt "${selectedPlaylist.name}" med disse artistene (de mest spilte først): ${artists.join(', ')}.
 
-Søk på nettet etter fersk, godt anmeldt musikk (${monthYear}) i samme stil/sjanger. Bruk kilder som Pitchfork, AllMusic, NME, RA, eller lignende.${extraLine}
+Finn ${count} artister som passer stilen til denne spillelisten, men som IKKE er i listen ovenfor. Prioriter artister som er aktive og har gitt ut musikk de siste 2 årene (${monthYear}).${extraLine}
 
-Returner KUN en JSON-array med ${count} spor. Ingen tekst før eller etter. Format:
-[{"title":"Sangnavn","artist":"Artistnavn"},...]
+Returner KUN en JSON-array. Ingen tekst før eller etter. Format:
+[{"artist":"Artistnavn","representative_track":"Et kjent spornavn av artisten"},...]
 
-Prioriter musikk som:
-1. Er utgitt de siste 12 månedene
-2. Passer stilen til spillelisten
-3. Er godt anmeldt eller redaksjonelt kuratert
-4. IKKE allerede er en av artistene i listen ovenfor`;
+Prioriter:
+1. Artister i samme sjanger/stil
+2. Artister med nylige utgivelser
+3. Artister som ofte nevnes i samme åndedrag som de over
+4. IKKE inkluder artister som allerede er i listen ovenfor`;
 
     const response = await askClaude(prompt);
     setStatus(`Fikk svar. Parser forslag…`);
 
-    let tracks = [];
+    let suggestions = [];
     try {
       const clean = response.replace(/```json|```/g, '').trim();
       const match = clean.match(/\[[\s\S]*\]/);
-      if (match) tracks = JSON.parse(match[0]);
+      if (match) suggestions = JSON.parse(match[0]);
     } catch (e) {
       throw new Error('Kunne ikke parse svar: ' + response.slice(0, 200));
     }
 
-    setStatus(`Fant ${tracks.length} forslag. Søker i Spotify-katalogen…`);
+    setStatus(`Fant ${suggestions.length} artister. Søker etter topplåter i Spotify…`);
 
     const grid = document.getElementById('tracksGrid');
     grid.innerHTML = '';
     document.getElementById('resultsSection').style.display = 'block';
 
     let found = 0;
-    for (let i = 0; i < tracks.length; i++) {
-      const t = tracks[i];
-      setStatus(`Søker etter ${i+1}/${tracks.length}: ${t.title} – ${t.artist}…`);
-      const spot = await searchTrack(t.title, t.artist);
+    for (let i = 0; i < suggestions.length; i++) {
+      const s = suggestions[i];
+      setStatus(`Søker etter ${i+1}/${suggestions.length}: ${s.artist}…`);
+
+      // Search by artist name – get their most popular track
+      let spot = null;
+      try {
+        const q = encodeURIComponent(`artist:${s.artist}`);
+        const data = await spotifyFetch(`/search?q=${q}&type=track&limit=5&market=NO`);
+        // Pick the first result from that artist
+        spot = data.tracks?.items?.find(t =>
+          t.artists.some(a => a.name.toLowerCase() === s.artist.toLowerCase())
+        ) || data.tracks?.items?.[0] || null;
+      } catch(e) { spot = null; }
 
       const row = document.createElement('div');
       row.className = 'track-row';
@@ -752,11 +768,11 @@ Prioriter musikk som:
 
       const name = document.createElement('div');
       name.className = 'track-name';
-      name.textContent = spot ? spot.name : t.title;
+      name.textContent = spot ? spot.name : (s.representative_track || '–');
 
       const artist = document.createElement('div');
       artist.className = 'track-artist';
-      artist.textContent = spot ? spot.artists.map(a => a.name).join(', ') : t.artist;
+      artist.textContent = spot ? spot.artists.map(a => a.name).join(', ') : s.artist;
 
       const check = document.createElement('div');
       if (spot) {
@@ -837,11 +853,7 @@ async function init() {
 
   if (window.location.search.includes('code=')) {
     clientId = localStorage.getItem('spotify_client_id') || '';
-    const ok = await handleCallback();
-    if (ok) {
-      localStorage.setItem('spotify_token', accessToken);
-      localStorage.setItem('scope_version', SCOPE_VERSION);
-    }
+    await handleCallback();
   }
 
   if (accessToken) {
