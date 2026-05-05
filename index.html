@@ -396,6 +396,7 @@
       <div class="dot"></div>
       <span id="userName">–</span>
     </div>
+    <button class="btn btn-outline" id="logoutBtn" style="display:none; font-size:0.65rem; padding:0.4rem 0.8rem;" onclick="logout()">Logg ut</button>
   </div>
 </header>
 
@@ -547,6 +548,7 @@ async function loadUser() {
   const user = await spotifyFetch('/me');
   document.getElementById('userName').textContent = user.display_name || user.id;
   document.getElementById('userPill').style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'block';
   return user.id;
 }
 
@@ -793,7 +795,7 @@ Prioriter:
     }
 
     document.getElementById('countBadge').textContent = `${found} funnet i Spotify`;
-    setStatus(`Ferdig! ${found} av ${tracks.length} spor funnet i Spotify-katalogen.\n\nTrykk «Lagre i Spotify» for å opprette spillelisten.`);
+    setStatus(`Ferdig! ${found} av ${suggestions.length} artister funnet i Spotify-katalogen.\n\nTrykk «Lagre i Spotify» for å opprette spillelisten.`);
     if (found > 0) document.getElementById('saveBtn').style.display = 'flex';
 
   } catch (err) {
@@ -838,6 +840,12 @@ function setStatus(msg) {
   box.textContent = msg;
   box.className = 'status-box active';
   box.style.color = '';
+}
+
+function logout() {
+  localStorage.removeItem('spotify_token');
+  localStorage.removeItem('scope_version');
+  location.reload();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
