@@ -667,7 +667,7 @@ async function createSpotifyPlaylist(userId, name, trackUris) {
 
 // ─── Claude API ───────────────────────────────────────────────────────────────
 async function askClaude(prompt) {
-  const res = await fetch('https://discovery-proxy-7lo3emI9d-marcussteinsvaag-beeps-projects.vercel.app/api/claude', {
+  const res = await fetch('https://discovery-proxy-ten.vercel.app/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
