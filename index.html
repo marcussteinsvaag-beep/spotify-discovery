@@ -796,6 +796,12 @@ async function saveToSpotify() {
   btn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></div> Lagrer…';
 
   try {
+    // Ensure we have userId
+    if (!currentUserId) {
+      const user = await spotifyFetch('/me');
+      currentUserId = user.id;
+    }
+
     const now = new Date();
     const monthYear = now.toLocaleString('no-NO', { month: 'long', year: 'numeric' });
     const name = `${selectedPlaylist.name} – nytt ${monthYear}`;
