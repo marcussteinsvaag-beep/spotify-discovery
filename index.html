@@ -652,18 +652,27 @@ async function searchTrack(title, artist) {
 }
 
 async function createSpotifyPlaylist(userId, name, trackUris) {
-  const res = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
+  // Step 1: Create playlist
+  const createRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, description: 'Kuratert av Claude – Discovery', public: false })
   });
-  const pl = await res.json();
+  const createBody = await createRes.text();
+  console.log('Create playlist status:', createRes.status, createBody);
+  if (!createRes.ok) throw new Error(`Kunne ikke opprette spilleliste: ${createRes.status} – ${createBody}`);
+  const pl = JSON.parse(createBody);
+  if (!pl.id) throw new Error('Fikk ikke playlist-ID: ' + createBody);
 
-  await fetch(`https://api.spotify.com/v1/playlists/${pl.id}/tracks`, {
+  // Step 2: Add tracks
+  const addRes = await fetch(`https://api.spotify.com/v1/playlists/${pl.id}/tracks`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({ uris: trackUris })
   });
+  const addBody = await addRes.text();
+  console.log('Add tracks status:', addRes.status, addBody);
+  if (!addRes.ok) throw new Error(`Spilleliste opprettet, men spor feilet: ${addRes.status} – ${addBody}`);
 
   return pl;
 }
@@ -828,7 +837,9 @@ async function saveToSpotify() {
     setStatus(`✓ Spilleliste opprettet i Spotify!\n\n«${name}»\n${foundTracks.length} spor lagt til.`);
     document.getElementById('statusBox').style.color = 'var(--green)';
   } catch (err) {
+    console.error('Save error:', err);
     setStatus('Feil ved lagring: ' + err.message);
+    document.getElementById('statusBox').style.color = 'var(--error)';
   }
 
   btn.disabled = false;
