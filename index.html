@@ -652,11 +652,8 @@ async function searchTrack(title, artist) {
 }
 
 async function createSpotifyPlaylist(userId, name, trackUris) {
-  // Step 1: Create playlist
-  console.log('Creating playlist for userId:', userId);
-  console.log('Token starts with:', accessToken ? accessToken.substring(0, 20) + '...' : 'NULL');
-  console.log('Track URIs:', trackUris);
-  const createRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
+  // Step 1: Create playlist – use /me/playlists to avoid userId issues
+  const createRes = await fetch(`https://api.spotify.com/v1/me/playlists`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, description: 'Kuratert av Claude – Discovery', public: false })
