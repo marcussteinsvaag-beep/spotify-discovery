@@ -526,9 +526,12 @@ async function handleCallback() {
   });
 
   const data = await res.json();
+  console.log('Token response:', JSON.stringify(data));
   if (data.access_token) {
     accessToken = data.access_token;
+    console.log('Granted scopes:', data.scope);
     localStorage.setItem('spotify_token', accessToken);
+    localStorage.setItem('spotify_scope', data.scope || '');
     localStorage.setItem('scope_version', SCOPE_VERSION);
     window.history.replaceState({}, '', window.location.pathname);
     return true;
