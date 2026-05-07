@@ -674,15 +674,12 @@ async function createSpotifyPlaylist(userId, name, trackUris) {
     addRes = await fetch(`https://api.spotify.com/v1/playlists/${pl.id}/tracks`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uris: chunk, position: 0 })
+      body: JSON.stringify({ uris: chunk })
     });
     addBody = await addRes.text();
     console.log('Add tracks chunk status:', addRes.status, addBody);
-    if (!addRes.ok) break;
+    if (!addRes.ok) throw new Error(`Spilleliste opprettet, men spor feilet: ${addRes.status} – ${addBody}`);
   }
-  const addBody = await addRes.text();
-  console.log('Add tracks status:', addRes.status, addBody);
-  if (!addRes.ok) throw new Error(`Spilleliste opprettet, men spor feilet: ${addRes.status} – ${addBody}`);
 
   return pl;
 }
