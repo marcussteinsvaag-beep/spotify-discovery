@@ -621,7 +621,7 @@ function selectPlaylist(pl, el) {
 async function getPlaylistArtists(playlistId) {
   // Fetch up to 100 tracks from the selected playlist
   let items = [];
-  let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100&fields=items(track(artists,name)),next`;
+  let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
   while (url) {
     const res = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
     if (!res.ok) {
