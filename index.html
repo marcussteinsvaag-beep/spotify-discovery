@@ -664,12 +664,22 @@ async function createSpotifyPlaylist(userId, name, trackUris) {
   const pl = JSON.parse(createBody);
   if (!pl.id) throw new Error('Fikk ikke playlist-ID: ' + createBody);
 
-  // Step 2: Add tracks
-  const addRes = await fetch(`https://api.spotify.com/v1/playlists/${pl.id}/tracks`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uris: trackUris })
-  });
+  console.log('Track URIs to add:', trackUris?.length, trackUris);
+  if (!trackUris || trackUris.length === 0) throw new Error('Ingen spor å legge til – foundTracks er tom');
+  // Step 2: Add tracks in batches of 100
+  const chunks = [];
+  for (let i = 0; i < trackUris.length; i += 100) chunks.push(trackUris.slice(i, i + 100));
+  let addRes, addBody;
+  for (const chunk of chunks) {
+    addRes = await fetch(`https://api.spotify.com/v1/playlists/${pl.id}/tracks`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uris: chunk, position: 0 })
+    });
+    addBody = await addRes.text();
+    console.log('Add tracks chunk status:', addRes.status, addBody);
+    if (!addRes.ok) break;
+  }
   const addBody = await addRes.text();
   console.log('Add tracks status:', addRes.status, addBody);
   if (!addRes.ok) throw new Error(`Spilleliste opprettet, men spor feilet: ${addRes.status} – ${addBody}`);
