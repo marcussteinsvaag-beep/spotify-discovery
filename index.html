@@ -656,7 +656,7 @@ async function createSpotifyPlaylist(userId, name, trackUris) {
   const createRes = await fetch(`https://api.spotify.com/v1/me/playlists`, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description: 'Kuratert av Claude – Discovery', public: false })
+    body: JSON.stringify({ name, description: 'Kuratert av Claude – Discovery', public: true })
   });
   const createBody = await createRes.text();
   console.log('Create playlist status:', createRes.status, createBody);
@@ -860,7 +860,7 @@ function logout() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-const SCOPE_VERSION = 'v2'; // bump this to force re-login when scopes change
+const SCOPE_VERSION = 'v3'; // bump this to force re-login when scopes change
 
 async function init() {
   // Force re-login if scope version has changed
